@@ -79,7 +79,9 @@ export default function HolidayPage() {
       console.error(`Cannot normalize invalid date: ${dateStr}`);
       return "2026-08-30";
     }
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    console.log(`Normalized date: "${dateStr}" → "${iso}"`);
+    return iso;
   };
 
   const start = parseDateSafely(holiday.start_date);

@@ -9,12 +9,20 @@ import { eachDayOfInterval, parseISO, format } from "date-fns";
 // ── Safe date formatting ─────────────────────────────────────────────────────
 
 function safeFormatDate(date: Date | null | undefined, pattern: string): string {
-  if (!date || isNaN(date.getTime())) {
+  if (!date) {
+    return "Invalid date";
+  }
+  if (!(date instanceof Date)) {
+    console.warn("Date is not a Date instance:", date);
+    return "Invalid date";
+  }
+  if (isNaN(date.getTime())) {
     return "Invalid date";
   }
   try {
     return format(date, pattern);
-  } catch {
+  } catch (e) {
+    console.warn("format() error:", e, "for date:", date);
     return "Invalid date";
   }
 }
@@ -84,19 +92,29 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
   const [form, setForm] = useState<FormState>({ startDayIndex: 0, nights: 1, locationName: "", url: "" });
   const [saving, setSaving] = useState(false);
 
-  // Safely parse dates, handling various formats
   const parseDateSafely = (dateStr: string) => {
+    if (!dateStr) {
+      console.error("Empty date string provided");
+      return new Date();
+    }
     try {
       const date = parseISO(dateStr);
       if (isNaN(date.getTime())) {
-        return new Date(dateStr);
+        console.warn(`parseISO gave invalid date for "${dateStr}", trying new Date()`);
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) {
+          console.error(`new Date() also failed for "${dateStr}"`);
+          return new Date();
+        }
+        return d;
       }
       return date;
-    } catch {
+    } catch (e) {
+      console.warn(`parseISO failed for "${dateStr}":`, e);
       // If parseISO fails, try treating it as a date string directly
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) {
-        console.error(`Invalid date: ${dateStr}`);
+        console.error(`All date parsing failed for "${dateStr}"`);
         return new Date();
       }
       return d;
@@ -108,6 +126,7 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
 
   // Guard against invalid days array
   if (days.length === 0 || !days[0] || isNaN(days[0].getTime())) {
+    console.error("Invalid days array:", { startDate, endDate, daysLength: days.length, firstDay: days[0] });
     return (
       <div className="overflow-y-auto h-full px-4 py-5 flex items-center justify-center">
         <div className="text-center text-gray-500">
@@ -132,6 +151,10 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
   }, [holidayId]);
 
   function openAdd(startDayIndex: number) {
+    // Validate the index is within bounds
+    if (startDayIndex > lastDayIndex) {
+      return;
+    }
     const nights = lastDayIndex - startDayIndex + 1;
     setEditingId(null);
     setForm({ startDayIndex, nights, locationName: "", url: "" });
@@ -155,7 +178,14 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
   }
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const updated = { ...f, [key]: value } as FormState;
+      // Clamp startDayIndex to valid range
+      if (key === "startDayIndex" && typeof value === "number") {
+        updated.startDayIndex = Math.min(Math.max(0, value), lastDayIndex);
+      }
+      return updated;
+    });
   }
 
   async function handleSave() {
@@ -256,20 +286,24 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
       );
       i = entry.end_day_index + 1;
     } else {
-      displayItems.push(
-        <div key={`gap-${i}`} className="bg-white rounded-xl border border-dashed border-gray-300 px-4 py-3 flex items-center justify-between">
-          <div>
-            <span className="text-xs text-gray-400 font-medium">Day {i + 1}</span>
-            <span className="text-gray-600 text-sm ml-2">{safeFormatDate(days[i], "EEEE, d MMMM")}</span>
+      // Only show gap if within bounds
+      if (i <= lastDayIndex) {
+        const dayIndex = i; // Capture the current value to avoid closure issues
+        displayItems.push(
+          <div key={`gap-${i}`} className="bg-white rounded-xl border border-dashed border-gray-300 px-4 py-3 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-gray-400 font-medium">Day {i + 1}</span>
+              <span className="text-gray-600 text-sm ml-2">{safeFormatDate(days[i], "EEEE, d MMMM")}</span>
+            </div>
+            <button
+              onClick={() => openAdd(dayIndex)}
+              className="text-brand-600 text-sm font-semibold hover:text-brand-700 flex-shrink-0"
+            >
+              + Add
+            </button>
           </div>
-          <button
-            onClick={() => openAdd(i)}
-            className="text-brand-600 text-sm font-semibold hover:text-brand-700 flex-shrink-0"
-          >
-            + Add
-          </button>
-        </div>
-      );
+        );
+      }
       i++;
     }
   }
