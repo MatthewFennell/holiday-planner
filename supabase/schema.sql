@@ -66,10 +66,28 @@ CREATE POLICY "public_update_transport"       ON transport_details FOR UPDATE US
 CREATE POLICY "public_delete_activities"      ON activities         FOR DELETE USING (true);
 CREATE POLICY "public_delete_transport"       ON transport_details FOR DELETE USING (true);
 
+-- 4. Packing list items
+CREATE TABLE IF NOT EXISTS packing_items (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  holiday_id  UUID        NOT NULL REFERENCES holidays(id) ON DELETE CASCADE,
+  name        TEXT        NOT NULL,
+  packed      BOOLEAN     NOT NULL DEFAULT false,
+  sort_order  INTEGER     NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE packing_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "public_read_packing"   ON packing_items FOR SELECT USING (true);
+CREATE POLICY "public_insert_packing" ON packing_items FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_packing" ON packing_items FOR UPDATE USING (true);
+CREATE POLICY "public_delete_packing" ON packing_items FOR DELETE USING (true);
+
 -- ============================================================
 --  Indexes for common query patterns
 -- ============================================================
 
-CREATE INDEX IF NOT EXISTS idx_transport_holiday ON transport_details(holiday_id);
-CREATE INDEX IF NOT EXISTS idx_activities_holiday ON activities(holiday_id);
+CREATE INDEX IF NOT EXISTS idx_transport_holiday  ON transport_details(holiday_id);
+CREATE INDEX IF NOT EXISTS idx_activities_holiday  ON activities(holiday_id);
 CREATE INDEX IF NOT EXISTS idx_activities_container ON activities(holiday_id, day_index, time_slot);
+CREATE INDEX IF NOT EXISTS idx_packing_holiday     ON packing_items(holiday_id);

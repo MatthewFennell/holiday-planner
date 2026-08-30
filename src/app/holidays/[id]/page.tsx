@@ -59,7 +59,7 @@ export default function HolidayPage() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-brand-600 text-white px-4 pt-10 pb-4 flex-shrink-0">
+      <header className="bg-brand-900 text-white px-4 pt-10 pb-4 flex-shrink-0">
         <div className="flex items-center gap-3 mb-1">
           <Link href="/" className="text-white/80 hover:text-white text-2xl leading-none">‹</Link>
           <div>

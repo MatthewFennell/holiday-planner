@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { TransportDetail, TransportType, TransportDirection } from "@/types";
+import type { TransportDetail, TransportType, TransportDirection, PackingItem } from "@/types";
 import { format, parseISO } from "date-fns";
 
 const TRANSPORT_ICONS: Record<TransportType, string> = {
@@ -37,19 +37,62 @@ export function MetadataTab({ holidayId }: MetadataTabProps) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
+  // Packing list state
+  const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
+  const [newItemName, setNewItemName] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
+
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from("transport_details")
-        .select("*")
-        .eq("holiday_id", holidayId)
-        .order("direction")
-        .order("departure_time");
-      if (data) setTransport(data);
+      const [{ data: transport }, { data: packing }] = await Promise.all([
+        supabase
+          .from("transport_details")
+          .select("*")
+          .eq("holiday_id", holidayId)
+          .order("direction")
+          .order("departure_time"),
+        supabase
+          .from("packing_items")
+          .select("*")
+          .eq("holiday_id", holidayId)
+          .order("sort_order"),
+      ]);
+      if (transport) setTransport(transport);
+      if (packing) setPackingItems(packing);
       setLoading(false);
     }
     load();
   }, [holidayId]);
+
+  async function handleAddPackingItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newItemName.trim()) return;
+    setAddingItem(true);
+    const { data, error } = await supabase
+      .from("packing_items")
+      .insert({
+        holiday_id: holidayId,
+        name: newItemName.trim(),
+        packed: false,
+        sort_order: packingItems.length,
+      })
+      .select()
+      .single();
+    if (!error && data) setPackingItems((prev) => [...prev, data]);
+    setNewItemName("");
+    setAddingItem(false);
+  }
+
+  async function handleTogglePacked(item: PackingItem) {
+    const updated = { ...item, packed: !item.packed };
+    setPackingItems((prev) => prev.map((p) => (p.id === item.id ? updated : p)));
+    await supabase.from("packing_items").update({ packed: updated.packed }).eq("id", item.id);
+  }
+
+  async function handleDeletePackingItem(id: string) {
+    setPackingItems((prev) => prev.filter((p) => p.id !== id));
+    await supabase.from("packing_items").delete().eq("id", id);
+  }
 
   function setField<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -108,8 +151,8 @@ export function MetadataTab({ holidayId }: MetadataTabProps) {
         </div>
       ) : (
         <>
-          <TransportSection title="🛫 Outbound Journey" legs={outbound} onDelete={handleDelete} />
-          <TransportSection title="🛬 Return Journey" legs={returnLeg} onDelete={handleDelete} />
+          <TransportSection title="Outbound Journey" legs={outbound} onDelete={handleDelete} />
+          <TransportSection title="Return Journey" legs={returnLeg} onDelete={handleDelete} />
           {transport.length === 0 && !showForm && (
             <p className="text-sm text-gray-400 text-center py-8">
               No travel details yet. Tap &quot;+ Add Leg&quot; to add your first journey.
@@ -117,6 +160,78 @@ export function MetadataTab({ holidayId }: MetadataTabProps) {
           )}
         </>
       )}
+
+      {/* Packing list */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-800 mb-3">🧳 Packing List</h2>
+
+        <form onSubmit={handleAddPackingItem} className="flex gap-2 mb-3">
+          <input
+            type="text"
+            placeholder="Add an item…"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            className="flex-1 border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-600 bg-white"
+          />
+          <button
+            type="submit"
+            disabled={addingItem || !newItemName.trim()}
+            className="bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl disabled:opacity-50 flex-shrink-0"
+          >
+            Add
+          </button>
+        </form>
+
+        {packingItems.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">
+            Nothing added yet. Start listing what to pack!
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {packingItems.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 border transition-colors ${
+                  item.packed ? "border-green-200 bg-green-50" : "border-gray-200"
+                }`}
+              >
+                <button
+                  onClick={() => handleTogglePacked(item)}
+                  className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                    item.packed
+                      ? "bg-green-500 border-green-500 text-white"
+                      : "border-gray-300 hover:border-brand-500"
+                  }`}
+                  aria-label={item.packed ? "Mark unpacked" : "Mark packed"}
+                >
+                  {item.packed && (
+                    <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                <span
+                  className={`flex-1 text-sm ${
+                    item.packed ? "line-through text-gray-400" : "text-gray-900"
+                  }`}
+                >
+                  {item.name}
+                </span>
+                <button
+                  onClick={() => handleDeletePackingItem(item.id)}
+                  className="text-gray-300 hover:text-red-400 text-xl leading-none flex-shrink-0"
+                  aria-label="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <p className="text-xs text-gray-400 text-right pt-1">
+              {packingItems.filter((p) => p.packed).length} / {packingItems.length} packed
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Add form modal */}
       {showForm && (

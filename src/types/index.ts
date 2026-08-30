@@ -34,5 +34,14 @@ export interface Activity {
   created_at: string;
 }
 
+export interface PackingItem {
+  id: string;
+  holiday_id: string;
+  name: string;
+  packed: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
 // Container IDs used by the drag-and-drop board
 export type ContainerId = "unassigned" | `day-${number}-${TimeSlot}`;
