@@ -42,6 +42,11 @@ export function MetadataTab({ holidayId, startDate, endDate }: MetadataTabProps)
   const [form, setForm] = useState(() => defaultForm("outbound", startDate, endDate));
   const [saving, setSaving] = useState(false);
 
+  // Keep form in sync with prop dates (initial render may run before dates are resolved)
+  useEffect(() => {
+    setForm(defaultForm("outbound", startDate, endDate));
+  }, [startDate, endDate]);
+
   // Packing list state
   const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
   const [newItemName, setNewItemName] = useState("");
