@@ -105,7 +105,7 @@ export default function HolidayPage() {
             endDate={holiday.end_date}
           />
         ) : (
-          <MetadataTab holidayId={id} />
+          <MetadataTab holidayId={id} startDate={holiday.start_date} endDate={holiday.end_date} />
         )}
       </div>
     </div>

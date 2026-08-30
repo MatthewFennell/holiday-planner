@@ -38,7 +38,8 @@ export interface Activity {
 export interface Accommodation {
   id: string;
   holiday_id: string;
-  day_index: number;
+  start_day_index: number;
+  end_day_index: number;
   location_name: string;
   url: string | null;
   created_at: string;

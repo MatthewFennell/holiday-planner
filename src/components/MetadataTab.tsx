@@ -18,23 +18,28 @@ const TRANSPORT_OPTIONS: TransportType[] = ["plane", "train", "car", "boat", "bu
 
 interface MetadataTabProps {
   holidayId: string;
+  startDate: string; // ISO date "YYYY-MM-DD"
+  endDate: string;
 }
 
-const EMPTY_FORM = {
-  direction: "outbound" as TransportDirection,
-  transport_type: "plane" as TransportType,
-  departure_location: "",
-  arrival_location: "",
-  departure_time: "",
-  arrival_time: "",
-  notes: "",
-};
+function defaultForm(direction: TransportDirection, startDate: string, endDate: string) {
+  const dateForDirection = direction === "outbound" ? startDate : endDate;
+  return {
+    direction,
+    transport_type: "plane" as TransportType,
+    departure_location: "",
+    arrival_location: "",
+    departure_time: `${dateForDirection}T09:00`,
+    arrival_time: `${dateForDirection}T12:00`,
+    notes: "",
+  };
+}
 
-export function MetadataTab({ holidayId }: MetadataTabProps) {
+export function MetadataTab({ holidayId, startDate, endDate }: MetadataTabProps) {
   const [transport, setTransport] = useState<TransportDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => defaultForm("outbound", startDate, endDate));
   const [saving, setSaving] = useState(false);
 
   // Packing list state
@@ -94,8 +99,17 @@ export function MetadataTab({ holidayId }: MetadataTabProps) {
     await supabase.from("packing_items").delete().eq("id", id);
   }
 
-  function setField<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  function setField<K extends keyof ReturnType<typeof defaultForm>>(key: K, value: ReturnType<typeof defaultForm>[K]) {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      // When direction changes, reset departure/arrival times to the appropriate holiday date
+      if (key === "direction") {
+        const date = value === "outbound" ? startDate : endDate;
+        next.departure_time = `${date}T09:00`;
+        next.arrival_time = `${date}T12:00`;
+      }
+      return next;
+    });
   }
 
   async function handleSave() {
@@ -118,7 +132,7 @@ export function MetadataTab({ holidayId }: MetadataTabProps) {
     if (!error && data) {
       setTransport((prev) => [...prev, data]);
     }
-    setForm(EMPTY_FORM);
+    setForm(defaultForm("outbound", startDate, endDate));
     setSaving(false);
     setShowForm(false);
   }

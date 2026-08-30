@@ -87,15 +87,17 @@ CREATE POLICY "public_insert_packing" ON packing_items FOR INSERT WITH CHECK (tr
 CREATE POLICY "public_update_packing" ON packing_items FOR UPDATE USING (true);
 CREATE POLICY "public_delete_packing" ON packing_items FOR DELETE USING (true);
 
--- 5. Accommodation (one entry per day per holiday)
+-- 5. Accommodation (date-range based — one entry can span multiple days)
+-- If upgrading: DROP TABLE accommodation; then run the CREATE below.
 CREATE TABLE IF NOT EXISTS accommodation (
-  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  holiday_id    UUID        NOT NULL REFERENCES holidays(id) ON DELETE CASCADE,
-  day_index     INTEGER     NOT NULL,
-  location_name TEXT        NOT NULL,
-  url           TEXT,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (holiday_id, day_index)
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  holiday_id      UUID        NOT NULL REFERENCES holidays(id) ON DELETE CASCADE,
+  start_day_index INTEGER     NOT NULL,
+  end_day_index   INTEGER     NOT NULL,
+  location_name   TEXT        NOT NULL,
+  url             TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_day_range CHECK (end_day_index >= start_day_index)
 );
 
 ALTER TABLE accommodation ENABLE ROW LEVEL SECURITY;
