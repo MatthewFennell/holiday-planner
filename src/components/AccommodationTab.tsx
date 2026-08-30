@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Accommodation } from "@/types";
 import { MapsPin } from "./ActivityCard";
-import { eachDayOfInterval, parseISO, format } from "date-fns";
+import { eachDayOfInterval, parseISO, format, subDays } from "date-fns";
 
 // ── Safe date formatting ─────────────────────────────────────────────────────
 
@@ -121,7 +121,8 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
     }
   };
 
-  const days = eachDayOfInterval({ start: parseDateSafely(startDate), end: parseDateSafely(endDate) });
+  // Exclude the final day (departure day) — no accommodation needed on checkout day
+  const days = eachDayOfInterval({ start: parseDateSafely(startDate), end: subDays(parseDateSafely(endDate), 1) });
   const lastDayIndex = days.length - 1;
 
   // Guard against invalid days array

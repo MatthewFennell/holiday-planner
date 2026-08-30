@@ -297,7 +297,7 @@ export function PlanningBoard({
                       <span className={`text-sm truncate ${
                         isActive ? "font-semibold text-brand-800" : "text-gray-600"
                       }`}>
-                        {format(day, "d MMM")}
+                        {format(day, "EEE d MMM")}
                       </span>
                       {TIME_SLOTS.map((slot) => {
                         const filled = activities.some(
