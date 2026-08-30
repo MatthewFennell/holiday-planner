@@ -29,6 +29,7 @@ export default function HolidayPage() {
         supabase.from("holidays").select("*").eq("id", id).single(),
         supabase.from("activities").select("*").eq("holiday_id", id).order("sort_order"),
       ]);
+      console.log("Raw holiday data from DB:", h);
       if (h) setHoliday(h);
       if (a) setActivities(a);
       setLoading(false);
@@ -53,9 +54,41 @@ export default function HolidayPage() {
     );
   }
 
-  const start = parseISO(holiday.start_date);
-  const end = parseISO(holiday.end_date);
+  // Safely parse dates, handling various formats
+  const parseDateSafely = (dateStr: string) => {
+    try {
+      const date = parseISO(dateStr);
+      if (isNaN(date.getTime())) {
+        return new Date(dateStr);
+      }
+      return date;
+    } catch {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        console.error(`Invalid date: ${dateStr}`);
+        return new Date();
+      }
+      return d;
+    }
+  };
+
+  // Normalize dates to ISO format (YYYY-MM-DD) for passing to components
+  const normalizeDateToISO = (dateStr: string) => {
+    const d = parseDateSafely(dateStr);
+    if (isNaN(d.getTime())) {
+      console.error(`Cannot normalize invalid date: ${dateStr}`);
+      return "2026-08-30";
+    }
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const start = parseDateSafely(holiday.start_date);
+  const end = parseDateSafely(holiday.end_date);
   const nights = differenceInDays(end, start);
+  const startDateISO = normalizeDateToISO(holiday.start_date);
+  const endDateISO = normalizeDateToISO(holiday.end_date);
+
+  console.log("Holiday dates:", { raw_start: holiday.start_date, raw_end: holiday.end_date, normalized_start: startDateISO, normalized_end: endDateISO });
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -94,18 +127,18 @@ export default function HolidayPage() {
         {tab === "plan" ? (
           <PlanningBoard
             holidayId={id}
-            startDate={holiday.start_date}
-            endDate={holiday.end_date}
+            startDate={startDateISO}
+            endDate={endDateISO}
             initialActivities={activities}
           />
         ) : tab === "stay" ? (
           <AccommodationTab
             holidayId={id}
-            startDate={holiday.start_date}
-            endDate={holiday.end_date}
+            startDate={startDateISO}
+            endDate={endDateISO}
           />
         ) : (
-          <MetadataTab holidayId={id} startDate={holiday.start_date} endDate={holiday.end_date} />
+          <MetadataTab holidayId={id} startDate={startDateISO} endDate={endDateISO} />
         )}
       </div>
     </div>

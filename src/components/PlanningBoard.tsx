@@ -67,7 +67,36 @@ export function PlanningBoard({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const daySectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const days = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
+  // Safely parse dates, handling various formats
+  const parseDateSafely = (dateStr: string) => {
+    try {
+      const date = parseISO(dateStr);
+      if (isNaN(date.getTime())) {
+        return new Date(dateStr);
+      }
+      return date;
+    } catch {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        console.error(`Invalid date: ${dateStr}`);
+        return new Date();
+      }
+      return d;
+    }
+  };
+
+  const days = eachDayOfInterval({ start: parseDateSafely(startDate), end: parseDateSafely(endDate) });
+
+  // Guard against invalid days array
+  if (days.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="text-center text-sm">
+          <p>Invalid date range for this holiday</p>
+        </div>
+      </div>
+    );
+  }
 
   // Highlight the day pill matching the section currently scrolled into view
   useEffect(() => {

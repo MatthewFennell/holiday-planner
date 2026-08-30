@@ -6,6 +6,19 @@ import type { Accommodation } from "@/types";
 import { MapsPin } from "./ActivityCard";
 import { eachDayOfInterval, parseISO, format } from "date-fns";
 
+// ── Safe date formatting ─────────────────────────────────────────────────────
+
+function safeFormatDate(date: Date | null | undefined, pattern: string): string {
+  if (!date || isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+  try {
+    return format(date, pattern);
+  } catch {
+    return "Invalid date";
+  }
+}
+
 // ── Link-type detection ──────────────────────────────────────────────────────
 
 type LinkKind = "maps" | "airbnb" | "booking" | "other";
@@ -71,8 +84,39 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
   const [form, setForm] = useState<FormState>({ startDayIndex: 0, nights: 1, locationName: "", url: "" });
   const [saving, setSaving] = useState(false);
 
-  const days = eachDayOfInterval({ start: parseISO(startDate), end: parseISO(endDate) });
+  // Safely parse dates, handling various formats
+  const parseDateSafely = (dateStr: string) => {
+    try {
+      const date = parseISO(dateStr);
+      if (isNaN(date.getTime())) {
+        return new Date(dateStr);
+      }
+      return date;
+    } catch {
+      // If parseISO fails, try treating it as a date string directly
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        console.error(`Invalid date: ${dateStr}`);
+        return new Date();
+      }
+      return d;
+    }
+  };
+
+  const days = eachDayOfInterval({ start: parseDateSafely(startDate), end: parseDateSafely(endDate) });
   const lastDayIndex = days.length - 1;
+
+  // Guard against invalid days array
+  if (days.length === 0 || !days[0] || isNaN(days[0].getTime())) {
+    return (
+      <div className="overflow-y-auto h-full px-4 py-5 flex items-center justify-center">
+        <div className="text-center text-gray-500">
+          <p className="text-sm">Invalid date range for this holiday</p>
+          <p className="text-xs mt-2 text-gray-400">Start: {startDate}, End: {endDate}</p>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     async function load() {
@@ -168,10 +212,10 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
       const rangeNights = entry.end_day_index - entry.start_day_index;
       const rangeLabel =
         entry.start_day_index === entry.end_day_index
-          ? `Day ${entry.start_day_index + 1} · ${format(days[entry.start_day_index], "EEE d MMM")}`
+          ? `Day ${entry.start_day_index + 1} · ${safeFormatDate(days[entry.start_day_index], "EEE d MMM")}`
           : `Days ${entry.start_day_index + 1}–${entry.end_day_index + 1} · ${
-              format(days[entry.start_day_index], "d MMM")
-            } – ${format(days[entry.end_day_index], "d MMM")}  (${rangeNights} night${
+              safeFormatDate(days[entry.start_day_index], "d MMM")
+            } – ${safeFormatDate(days[entry.end_day_index], "d MMM")}  (${rangeNights} night${
               rangeNights !== 1 ? "s" : ""
             })`;
 
@@ -182,7 +226,11 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
             <span className="text-white/80 text-xs font-medium truncate">{rangeLabel}</span>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={() => openEdit(entry)} className="text-white/60 hover:text-white text-xs underline">Edit</button>
-              <button onClick={() => handleDelete(entry.id)} className="text-white/40 hover:text-white text-lg leading-none" aria-label="Remove">×</button>
+              <button onClick={() => {
+                if (confirm(`Delete "${entry.location_name}"?`)) {
+                  handleDelete(entry.id);
+                }
+              }} className="text-white/40 hover:text-white text-lg leading-none" aria-label="Remove">×</button>
             </div>
           </div>
           {/* Location + link */}
@@ -198,7 +246,7 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
                 <div key={d} className="flex items-center gap-2 py-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-300 flex-shrink-0" />
                   <span className="text-xs text-gray-500">
-                    Day {d + 1} · {format(days[d], "EEEE, d MMMM")}
+                    Day {d + 1} · {safeFormatDate(days[d], "EEEE, d MMMM")}
                   </span>
                 </div>
               );
@@ -212,7 +260,7 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
         <div key={`gap-${i}`} className="bg-white rounded-xl border border-dashed border-gray-300 px-4 py-3 flex items-center justify-between">
           <div>
             <span className="text-xs text-gray-400 font-medium">Day {i + 1}</span>
-            <span className="text-gray-600 text-sm ml-2">{format(days[i], "EEEE, d MMMM")}</span>
+            <span className="text-gray-600 text-sm ml-2">{safeFormatDate(days[i], "EEEE, d MMMM")}</span>
           </div>
           <button
             onClick={() => openAdd(i)}
@@ -257,7 +305,7 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Check-in day</label>
               <div className="border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50 text-sm text-gray-700">
-                Day {form.startDayIndex + 1} · {format(days[form.startDayIndex], "EEEE, d MMMM")}
+                <>Day {form.startDayIndex + 1} · {safeFormatDate(days[form.startDayIndex], "EEEE, d MMMM")}</>
               </div>
             </div>
 
@@ -289,8 +337,8 @@ export function AccommodationTab({ holidayId, startDate, endDate }: Accommodatio
                 </button>
               </div>
               <p className="text-xs text-brand-700 font-medium mt-2">
-                {format(days[form.startDayIndex], "d MMM")}
-                {previewEnd > form.startDayIndex && ` – ${format(days[previewEnd], "d MMM")}`}
+                {safeFormatDate(days[form.startDayIndex], "d MMM")}
+                {previewEnd > form.startDayIndex && ` – ${safeFormatDate(days[previewEnd], "d MMM")}`}
                 {" "}· Days {form.startDayIndex + 1}–{previewEnd + 1}
               </p>
             </div>

@@ -232,7 +232,11 @@ export function MetadataTab({ holidayId, startDate, endDate }: MetadataTabProps)
                   {item.name}
                 </span>
                 <button
-                  onClick={() => handleDeletePackingItem(item.id)}
+                  onClick={() => {
+                    if (confirm(`Delete "${item.name}"?`)) {
+                      handleDeletePackingItem(item.id);
+                    }
+                  }}
                   className="text-gray-300 hover:text-red-400 text-xl leading-none flex-shrink-0"
                   aria-label="Remove"
                 >
@@ -427,7 +431,11 @@ function TransportCard({
           </div>
         </div>
         <button
-          onClick={() => onDelete(leg.id)}
+          onClick={() => {
+            if (confirm(`Delete ${leg.departure_location} → ${leg.arrival_location}?`)) {
+              onDelete(leg.id);
+            }
+          }}
           className="text-gray-300 hover:text-red-400 text-xl leading-none ml-2"
           aria-label="Remove"
         >

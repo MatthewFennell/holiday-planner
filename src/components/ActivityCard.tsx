@@ -73,7 +73,11 @@ export function ActivityCard({ activity, overlay, onDelete }: ActivityCardProps)
             </a>
           )}
           <button
-            onClick={() => onDelete(activity.id)}
+            onClick={() => {
+              if (confirm(`Delete "${activity.title}"?`)) {
+                onDelete(activity.id);
+              }
+            }}
             className="text-gray-300 hover:text-red-400 text-xl leading-none"
             aria-label="Remove activity"
           >
