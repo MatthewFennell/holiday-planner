@@ -17,6 +17,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { Activity, ContainerId, TimeSlot } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { ActivityCard } from "./ActivityCard";
+import { MapsPin } from "./ActivityCard";
 import { TimeSlotDropZone } from "./TimeSlotDropZone";
 import { eachDayOfInterval, parseISO, format } from "date-fns";
 
@@ -55,10 +56,12 @@ export function PlanningBoard({
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [activeActivity, setActiveActivity] = useState<Activity | null>(null);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [overviewExpanded, setOverviewExpanded] = useState(true);
   const [poolExpanded, setPoolExpanded] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newMapsUrl, setNewMapsUrl] = useState("");
   const [adding, setAdding] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -194,6 +197,7 @@ export function PlanningBoard({
         holiday_id: holidayId,
         title: newTitle.trim(),
         description: newDesc.trim() || null,
+        maps_url: newMapsUrl.trim() || null,
         day_index: null,
         time_slot: null,
         sort_order: activities.filter((a) => a.day_index === null).length,
@@ -203,6 +207,7 @@ export function PlanningBoard({
     if (!error && data) setActivities((prev) => [...prev, data]);
     setNewTitle("");
     setNewDesc("");
+    setNewMapsUrl("");
     setAdding(false);
     setShowAddModal(false);
   }
@@ -223,6 +228,71 @@ export function PlanningBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="flex flex-col h-full overflow-hidden">
+
+        {/* ── Overview grid ────────────────────────────────────── */}
+        <div className="bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <button
+              onClick={() => setOverviewExpanded((p) => !p)}
+              className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+            >
+              Overview
+              <span className="text-gray-400 text-xs">{overviewExpanded ? "▲" : "▼"}</span>
+            </button>
+          </div>
+
+          {overviewExpanded && (
+            <div className="px-4 pb-3">
+              {/* Column headers */}
+              <div className="grid grid-cols-4 gap-x-2 mb-1">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wide">Date</div>
+                {TIME_SLOTS.map((slot) => (
+                  <div key={slot} className="text-xs font-bold text-gray-400 uppercase tracking-wide text-center">
+                    {slot === "morning" ? "AM" : slot === "afternoon" ? "PM" : "Eve"}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows — scrollable if many days */}
+              <div className="max-h-44 overflow-y-auto space-y-0.5 no-scrollbar">
+                {days.map((day, i) => {
+                  const isActive = activeDayIndex === i;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => scrollToDay(i)}
+                      className={`grid grid-cols-4 gap-x-2 w-full py-1.5 px-2 rounded-lg transition-colors text-left ${
+                        isActive ? "bg-brand-50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className={`text-sm truncate ${
+                        isActive ? "font-semibold text-brand-800" : "text-gray-600"
+                      }`}>
+                        {format(day, "d MMM")}
+                      </span>
+                      {TIME_SLOTS.map((slot) => {
+                        const filled = activities.some(
+                          (a) => a.day_index === i && a.time_slot === slot
+                        );
+                        return (
+                          <div key={slot} className="flex justify-center items-center">
+                            {filled ? (
+                              <span className="text-emerald-500 font-bold text-base leading-none">
+                                ✓
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 text-base leading-none">✗</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ── Ideas Pool ──────────────────────────────────────── */}
         <div className="bg-white border-b border-gray-200 flex-shrink-0">
@@ -390,6 +460,18 @@ export function PlanningBoard({
               rows={2}
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-600 resize-none"
             />
+            <div className="relative">
+              <input
+                type="url"
+                placeholder="Google Maps link (optional)"
+                value={newMapsUrl}
+                onChange={(e) => setNewMapsUrl(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl pl-10 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <MapsPin className="w-5 h-5" />
+              </span>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowAddModal(false)}

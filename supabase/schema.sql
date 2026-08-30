@@ -33,11 +33,15 @@ CREATE TABLE IF NOT EXISTS activities (
   holiday_id  UUID        NOT NULL REFERENCES holidays(id) ON DELETE CASCADE,
   title       TEXT        NOT NULL,
   description TEXT,
+  maps_url    TEXT,
   day_index   INTEGER,                -- NULL = unassigned; 0 = first day of trip
   time_slot   TEXT        CHECK (time_slot IN ('morning','afternoon','evening')),
   sort_order  INTEGER     NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- If upgrading an existing database, run this line instead of the CREATE TABLE above:
+-- ALTER TABLE activities ADD COLUMN IF NOT EXISTS maps_url TEXT;
 
 -- ============================================================
 --  Row Level Security – open read/write for everyone
@@ -82,6 +86,26 @@ CREATE POLICY "public_read_packing"   ON packing_items FOR SELECT USING (true);
 CREATE POLICY "public_insert_packing" ON packing_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "public_update_packing" ON packing_items FOR UPDATE USING (true);
 CREATE POLICY "public_delete_packing" ON packing_items FOR DELETE USING (true);
+
+-- 5. Accommodation (one entry per day per holiday)
+CREATE TABLE IF NOT EXISTS accommodation (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  holiday_id    UUID        NOT NULL REFERENCES holidays(id) ON DELETE CASCADE,
+  day_index     INTEGER     NOT NULL,
+  location_name TEXT        NOT NULL,
+  url           TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (holiday_id, day_index)
+);
+
+ALTER TABLE accommodation ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "public_read_accommodation"   ON accommodation FOR SELECT USING (true);
+CREATE POLICY "public_insert_accommodation" ON accommodation FOR INSERT WITH CHECK (true);
+CREATE POLICY "public_update_accommodation" ON accommodation FOR UPDATE USING (true);
+CREATE POLICY "public_delete_accommodation" ON accommodation FOR DELETE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_accommodation_holiday ON accommodation(holiday_id);
 
 -- ============================================================
 --  Indexes for common query patterns

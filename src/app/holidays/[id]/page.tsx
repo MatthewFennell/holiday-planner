@@ -9,9 +9,10 @@ import { supabase } from "@/lib/supabase";
 import type { Holiday, Activity } from "@/types";
 import { PlanningBoard } from "@/components/PlanningBoard";
 import { MetadataTab } from "@/components/MetadataTab";
+import { AccommodationTab } from "@/components/AccommodationTab";
 import { format, parseISO, differenceInDays } from "date-fns";
 
-type Tab = "plan" | "info";
+type Tab = "plan" | "stay" | "info";
 
 export default function HolidayPage() {
   const params = useParams<{ id: string }>();
@@ -71,18 +72,18 @@ export default function HolidayPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-3">
-          {(["plan", "info"] as Tab[]).map((t) => (
+        <div className="flex gap-1 mt-3 overflow-x-auto no-scrollbar">
+          {(["plan", "stay", "info"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 tab === t
                   ? "bg-white text-brand-700"
                   : "text-white/70 hover:text-white hover:bg-white/10"
               }`}
             >
-              {t === "plan" ? "📅 Plan" : "ℹ️ Info"}
+              {t === "plan" ? "📅 Plan" : t === "stay" ? "🏠 Stay" : "ℹ️ Info"}
             </button>
           ))}
         </div>
@@ -96,6 +97,12 @@ export default function HolidayPage() {
             startDate={holiday.start_date}
             endDate={holiday.end_date}
             initialActivities={activities}
+          />
+        ) : tab === "stay" ? (
+          <AccommodationTab
+            holidayId={id}
+            startDate={holiday.start_date}
+            endDate={holiday.end_date}
           />
         ) : (
           <MetadataTab holidayId={id} />

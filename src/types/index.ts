@@ -28,9 +28,19 @@ export interface Activity {
   holiday_id: string;
   title: string;
   description: string | null;
+  maps_url: string | null;
   day_index: number | null; // null = unassigned; 0 = first day of trip
   time_slot: TimeSlot | null;
   sort_order: number;
+  created_at: string;
+}
+
+export interface Accommodation {
+  id: string;
+  holiday_id: string;
+  day_index: number;
+  location_name: string;
+  url: string | null;
   created_at: string;
 }
 

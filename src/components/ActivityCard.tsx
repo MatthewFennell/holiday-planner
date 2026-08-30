@@ -4,6 +4,19 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Activity } from "@/types";
 
+// Reusable Google-Maps-style location pin icon
+export function MapsPin({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+        fill="#EA4335"
+      />
+      <circle cx="12" cy="9" r="2.5" fill="white" />
+    </svg>
+  );
+}
+
 interface ActivityCardProps {
   activity: Activity;
   overlay?: boolean;
@@ -46,13 +59,27 @@ export function ActivityCard({ activity, overlay, onDelete }: ActivityCardProps)
         )}
       </div>
       {!overlay && (
-        <button
-          onClick={() => onDelete(activity.id)}
-          className="text-gray-300 hover:text-red-400 text-lg leading-none flex-shrink-0"
-          aria-label="Remove activity"
-        >
-          ×
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {activity.maps_url && (
+            <a
+              href={activity.maps_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Open in Google Maps"
+              className="p-0.5 rounded hover:bg-gray-100 transition-colors"
+            >
+              <MapsPin className="w-5 h-5" />
+            </a>
+          )}
+          <button
+            onClick={() => onDelete(activity.id)}
+            className="text-gray-300 hover:text-red-400 text-xl leading-none"
+            aria-label="Remove activity"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
